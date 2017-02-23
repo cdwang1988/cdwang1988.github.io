@@ -1102,11 +1102,14 @@ Module["stackTrace"] = stackTrace;
 
 // Memory management
 
-var PAGE_SIZE = 4096;
+var PAGE_SIZE = 16384;
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+var MIN_TOTAL_MEMORY = 16777216;
 
-function alignMemoryPage(x) {
-  if (x % 4096 > 0) {
-    x += (4096 - (x % 4096));
+function alignUp(x, multiple) {
+  if (x % multiple > 0) {
+    x += multiple - (x % multiple);
   }
   return x;
 }
@@ -1151,20 +1154,7 @@ function enlargeMemory() {
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || 5242880;
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 134217728;
-
-var WASM_PAGE_SIZE = 64 * 1024;
-
-var totalMemory = WASM_PAGE_SIZE;
-while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
-  if (totalMemory < 16*1024*1024) {
-    totalMemory *= 2;
-  } else {
-    totalMemory += 16*1024*1024;
-  }
-}
-if (totalMemory !== TOTAL_MEMORY) {
-  TOTAL_MEMORY = totalMemory;
-}
+if (TOTAL_MEMORY < TOTAL_STACK) Module.printErr('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // Initialize the runtime's memory
 
@@ -1502,7 +1492,7 @@ function integrateWasmJS(Module) {
 
   var wasmTextFile = Module['wasmTextFile'] || 'MyGame.wast';
   var wasmBinaryFile = Module['wasmBinaryFile'] || 'MyGame.wasm';
-  var asmjsCodeFile = Module['asmjsCodeFile'] || 'MyGame.asm.js';
+  var asmjsCodeFile = Module['asmjsCodeFile'] || 'MyGame.temp.asm.js';
 
   // utilities
 
@@ -1658,6 +1648,16 @@ function integrateWasmJS(Module) {
       Module['asm'] = exports;
       Module["usingWasm"] = true;
     }
+    Module['printErr']('asynchronously preparing wasm');
+    addRunDependency('wasm-instantiate'); // we can't run yet
+    WebAssembly.instantiate(getBinary(), info).then(function(output) {
+      // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+      receiveInstance(output.instance);
+      removeRunDependency('wasm-instantiate');
+    }).catch(function(reason) {
+      Module['printErr']('failed to asynchronously prepare wasm:\n  ' + reason);
+    });
+    return {}; // no exports yet; we'll fill them in later
     var instance;
     try {
       instance = new WebAssembly.Instance(new WebAssembly.Module(getBinary()), info)
@@ -1743,14 +1743,20 @@ function integrateWasmJS(Module) {
 
   // Memory growth integration code
   Module['reallocBuffer'] = function(size) {
-    size = Math.ceil(size / wasmPageSize) * wasmPageSize; // round up to wasm page size
+    var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var old = Module['buffer'];
-    var result = exports['__growWasmMemory'](size / wasmPageSize); // tiny wasm method that just does grow_memory
+    var oldSize = old.byteLength;
     if (Module["usingWasm"]) {
-      if (result !== (-1 | 0)) {
-        // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = Module['wasmMemory'].buffer;
-      } else {
+      try {
+        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
+        if (result !== (-1 | 0)) {
+          // success in native wasm memory growth, get the buffer from the memory
+          return Module['buffer'] = Module['wasmMemory'].buffer;
+        } else {
+          return null;
+        }
+      } catch(e) {
         return null;
       }
     } else {
@@ -1833,7 +1839,7 @@ var ASM_CONSTS = [];
 
 STATIC_BASE = 1024;
 
-STATICTOP = STATIC_BASE + 596032;
+STATICTOP = STATIC_BASE + 597088;
   /* global initializers */  __ATINIT__.push({ func: function() { __GLOBAL__I_000101() } }, { func: function() { __GLOBAL__sub_I_AudioEngine_emscripten_cpp() } }, { func: function() { __GLOBAL__sub_I_UISlider_cpp() } }, { func: function() { __GLOBAL__sub_I_CCCamera_cpp() } }, { func: function() { __GLOBAL__sub_I_CCDrawingPrimitives_cpp() } }, { func: function() { __GLOBAL__sub_I_CCFontAtlasCache_cpp() } }, { func: function() { __GLOBAL__sub_I_CCFontFreeType_cpp() } }, { func: function() { __GLOBAL__sub_I_CCGLView_cpp() } }, { func: function() { __GLOBAL__sub_I_CCVertexAttribBinding_cpp() } }, { func: function() { __GLOBAL__sub_I_CCFrameBuffer_cpp() } }, { func: function() { __GLOBAL__sub_I_AudioEngine_cpp() } }, { func: function() { __GLOBAL__sub_I_ccUtils_cpp() } }, { func: function() { __GLOBAL__sub_I_UILayout_cpp() } }, { func: function() { __GLOBAL__sub_I_UIListView_cpp() } }, { func: function() { __GLOBAL__sub_I_UIPageView_cpp() } }, { func: function() { __GLOBAL__sub_I_UIScrollView_cpp() } }, { func: function() { __GLOBAL__sub_I_UIScrollViewBar_cpp() } }, { func: function() { __GLOBAL__sub_I_btQuickprof_cpp() } }, { func: function() { __GLOBAL__sub_I_iostream_cpp() } }, { func: function() { __GLOBAL__sub_I_CCEventListenerAcceleration_cpp() } }, { func: function() { __GLOBAL__sub_I_CCImage_cpp() } }, { func: function() { __GLOBAL__sub_I_CCPhysicsBody_cpp() } }, { func: function() { __GLOBAL__sub_I_CCGLProgram_cpp() } }, { func: function() { __GLOBAL__sub_I_CCGLProgramState_cpp() } }, { func: function() { __GLOBAL__sub_I_CCTexture2D_cpp() } }, { func: function() { __GLOBAL__sub_I_CCTextureCache_cpp() } }, { func: function() { __GLOBAL__sub_I_CCConsole_cpp() } }, { func: function() { __GLOBAL__sub_I_CCData_cpp() } }, { func: function() { __GLOBAL__sub_I_CCMenuItem_cpp() } }, { func: function() { __GLOBAL__sub_I_CCEventListenerFocus_cpp() } }, { func: function() { __GLOBAL__sub_I_CCEventListenerKeyboard_cpp() } }, { func: function() { __GLOBAL__sub_I_CCEventListenerMouse_cpp() } }, { func: function() { __GLOBAL__sub_I_CCEventListenerTouch_cpp() } }, { func: function() { __GLOBAL__sub_I_CCUserDefault_cpp() } }, { func: function() { __GLOBAL__sub_I_CCValue_cpp() } }, { func: function() { __GLOBAL__sub_I_ZipUtils_cpp() } }, { func: function() { __GLOBAL__sub_I_ccTypes_cpp() } });
   
 
@@ -1842,7 +1848,7 @@ memoryInitializer = Module["wasmJSMethod"].indexOf("asmjs") >= 0 || Module["wasm
 
 
 
-var STATIC_BUMP = 596032;
+var STATIC_BUMP = 597088;
 Module["STATIC_BASE"] = STATIC_BASE;
 Module["STATIC_BUMP"] = STATIC_BUMP;
 
@@ -7077,6 +7083,10 @@ function copyTempDouble(ptr) {
           audio.webAudioNode['onended'] = function() { audio['onended'](); } // For <media> element compatibility, route the onended signal to the instance.
   
           audio.webAudioPannerNode = SDL.audioContext['createPanner']();
+          // avoid Chrome bug
+          // If posz = 0, the sound will come from only the right.
+          // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
+          audio.webAudioPannerNode["setPosition"](0, 0, -.5);
           audio.webAudioPannerNode['panningModel'] = 'equalpower';
   
           // Add an intermediate gain node to control volume.
@@ -7163,7 +7173,7 @@ function copyTempDouble(ptr) {
         if (typeof button === 'object') {
           // Current gamepad API editor's draft (Firefox Nightly)
           // https://dvcs.w3.org/hg/gamepad/raw-file/default/gamepad.html#idl-def-GamepadButton
-          return button.pressed;
+          return button['pressed'];
         } else {
           // Current gamepad API working draft (Firefox / Chrome Stable)
           // http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
@@ -7173,6 +7183,8 @@ function copyTempDouble(ptr) {
         for (var joystick in SDL.lastJoystickState) {
           var state = SDL.getGamepad(joystick - 1);
           var prevState = SDL.lastJoystickState[joystick];
+          // If joystick was removed, state returns null.
+          if (typeof state === 'undefined') return;
           // Check only if the timestamp has differed.
           // NOTE: Timestamp is not available in Firefox.
           if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
@@ -12594,136 +12606,137 @@ Module.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enla
 var asm =Module["asm"]// EMSCRIPTEN_END_ASM
 (Module.asmGlobalArg, Module.asmLibraryArg, buffer);
 
-var __GLOBAL__sub_I_ccTypes_cpp = Module["__GLOBAL__sub_I_ccTypes_cpp"] = asm["__GLOBAL__sub_I_ccTypes_cpp"];
-var __GLOBAL__sub_I_CCData_cpp = Module["__GLOBAL__sub_I_CCData_cpp"] = asm["__GLOBAL__sub_I_CCData_cpp"];
-var __GLOBAL__sub_I_CCFontFreeType_cpp = Module["__GLOBAL__sub_I_CCFontFreeType_cpp"] = asm["__GLOBAL__sub_I_CCFontFreeType_cpp"];
-var __GLOBAL__sub_I_ccUtils_cpp = Module["__GLOBAL__sub_I_ccUtils_cpp"] = asm["__GLOBAL__sub_I_ccUtils_cpp"];
-var _main = Module["_main"] = asm["_main"];
-var __GLOBAL__sub_I_UIScrollViewBar_cpp = Module["__GLOBAL__sub_I_UIScrollViewBar_cpp"] = asm["__GLOBAL__sub_I_UIScrollViewBar_cpp"];
-var __GLOBAL__sub_I_CCCamera_cpp = Module["__GLOBAL__sub_I_CCCamera_cpp"] = asm["__GLOBAL__sub_I_CCCamera_cpp"];
-var __GLOBAL__sub_I_AudioEngine_cpp = Module["__GLOBAL__sub_I_AudioEngine_cpp"] = asm["__GLOBAL__sub_I_AudioEngine_cpp"];
-var __GLOBAL__sub_I_AudioEngine_emscripten_cpp = Module["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"] = asm["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"];
-var __GLOBAL__sub_I_CCDrawingPrimitives_cpp = Module["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"] = asm["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"];
-var __GLOBAL__sub_I_CCValue_cpp = Module["__GLOBAL__sub_I_CCValue_cpp"] = asm["__GLOBAL__sub_I_CCValue_cpp"];
-var __GLOBAL__sub_I_CCFrameBuffer_cpp = Module["__GLOBAL__sub_I_CCFrameBuffer_cpp"] = asm["__GLOBAL__sub_I_CCFrameBuffer_cpp"];
-var __GLOBAL__sub_I_CCGLProgram_cpp = Module["__GLOBAL__sub_I_CCGLProgram_cpp"] = asm["__GLOBAL__sub_I_CCGLProgram_cpp"];
-var _fflush = Module["_fflush"] = asm["_fflush"];
-var ___cxa_is_pointer_type = Module["___cxa_is_pointer_type"] = asm["___cxa_is_pointer_type"];
-var _memset = Module["_memset"] = asm["_memset"];
-var __GLOBAL__sub_I_CCEventListenerAcceleration_cpp = Module["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"] = asm["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"];
-var _sbrk = Module["_sbrk"] = asm["_sbrk"];
-var __GLOBAL__sub_I_CCGLView_cpp = Module["__GLOBAL__sub_I_CCGLView_cpp"] = asm["__GLOBAL__sub_I_CCGLView_cpp"];
-var _memcpy = Module["_memcpy"] = asm["_memcpy"];
-var __GLOBAL__sub_I_iostream_cpp = Module["__GLOBAL__sub_I_iostream_cpp"] = asm["__GLOBAL__sub_I_iostream_cpp"];
-var _llvm_bswap_i32 = Module["_llvm_bswap_i32"] = asm["_llvm_bswap_i32"];
-var __GLOBAL__sub_I_CCGLProgramState_cpp = Module["__GLOBAL__sub_I_CCGLProgramState_cpp"] = asm["__GLOBAL__sub_I_CCGLProgramState_cpp"];
-var __GLOBAL__sub_I_UIScrollView_cpp = Module["__GLOBAL__sub_I_UIScrollView_cpp"] = asm["__GLOBAL__sub_I_UIScrollView_cpp"];
-var __GLOBAL__sub_I_CCTexture2D_cpp = Module["__GLOBAL__sub_I_CCTexture2D_cpp"] = asm["__GLOBAL__sub_I_CCTexture2D_cpp"];
-var __GLOBAL__sub_I_UIListView_cpp = Module["__GLOBAL__sub_I_UIListView_cpp"] = asm["__GLOBAL__sub_I_UIListView_cpp"];
-var __GLOBAL__sub_I_UISlider_cpp = Module["__GLOBAL__sub_I_UISlider_cpp"] = asm["__GLOBAL__sub_I_UISlider_cpp"];
-var __GLOBAL__sub_I_CCVertexAttribBinding_cpp = Module["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"] = asm["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"];
-var _ntohs = Module["_ntohs"] = asm["_ntohs"];
-var _htonl = Module["_htonl"] = asm["_htonl"];
-var _realloc = Module["_realloc"] = asm["_realloc"];
-var _pthread_self = Module["_pthread_self"] = asm["_pthread_self"];
-var _pthread_mutex_unlock = Module["_pthread_mutex_unlock"] = asm["_pthread_mutex_unlock"];
-var __GLOBAL__I_000101 = Module["__GLOBAL__I_000101"] = asm["__GLOBAL__I_000101"];
-var _llvm_bswap_i16 = Module["_llvm_bswap_i16"] = asm["_llvm_bswap_i16"];
-var __GLOBAL__sub_I_ZipUtils_cpp = Module["__GLOBAL__sub_I_ZipUtils_cpp"] = asm["__GLOBAL__sub_I_ZipUtils_cpp"];
-var __GLOBAL__sub_I_UIPageView_cpp = Module["__GLOBAL__sub_I_UIPageView_cpp"] = asm["__GLOBAL__sub_I_UIPageView_cpp"];
-var __GLOBAL__sub_I_CCFontAtlasCache_cpp = Module["__GLOBAL__sub_I_CCFontAtlasCache_cpp"] = asm["__GLOBAL__sub_I_CCFontAtlasCache_cpp"];
-var __GLOBAL__sub_I_CCEventListenerTouch_cpp = Module["__GLOBAL__sub_I_CCEventListenerTouch_cpp"] = asm["__GLOBAL__sub_I_CCEventListenerTouch_cpp"];
-var _htons = Module["_htons"] = asm["_htons"];
-var __GLOBAL__sub_I_CCMenuItem_cpp = Module["__GLOBAL__sub_I_CCMenuItem_cpp"] = asm["__GLOBAL__sub_I_CCMenuItem_cpp"];
-var _pthread_cond_broadcast = Module["_pthread_cond_broadcast"] = asm["_pthread_cond_broadcast"];
-var __GLOBAL__sub_I_CCEventListenerKeyboard_cpp = Module["__GLOBAL__sub_I_CCEventListenerKeyboard_cpp"] = asm["__GLOBAL__sub_I_CCEventListenerKeyboard_cpp"];
-var __GLOBAL__sub_I_CCEventListenerMouse_cpp = Module["__GLOBAL__sub_I_CCEventListenerMouse_cpp"] = asm["__GLOBAL__sub_I_CCEventListenerMouse_cpp"];
-var ___errno_location = Module["___errno_location"] = asm["___errno_location"];
-var runPostSets = Module["runPostSets"] = asm["runPostSets"];
-var _testSetjmp = Module["_testSetjmp"] = asm["_testSetjmp"];
-var _saveSetjmp = Module["_saveSetjmp"] = asm["_saveSetjmp"];
-var _free = Module["_free"] = asm["_free"];
-var ___cxa_can_catch = Module["___cxa_can_catch"] = asm["___cxa_can_catch"];
-var __GLOBAL__sub_I_CCConsole_cpp = Module["__GLOBAL__sub_I_CCConsole_cpp"] = asm["__GLOBAL__sub_I_CCConsole_cpp"];
-var __GLOBAL__sub_I_btQuickprof_cpp = Module["__GLOBAL__sub_I_btQuickprof_cpp"] = asm["__GLOBAL__sub_I_btQuickprof_cpp"];
-var _memmove = Module["_memmove"] = asm["_memmove"];
-var __GLOBAL__sub_I_CCTextureCache_cpp = Module["__GLOBAL__sub_I_CCTextureCache_cpp"] = asm["__GLOBAL__sub_I_CCTextureCache_cpp"];
-var __GLOBAL__sub_I_CCImage_cpp = Module["__GLOBAL__sub_I_CCImage_cpp"] = asm["__GLOBAL__sub_I_CCImage_cpp"];
-var __GLOBAL__sub_I_UILayout_cpp = Module["__GLOBAL__sub_I_UILayout_cpp"] = asm["__GLOBAL__sub_I_UILayout_cpp"];
-var __GLOBAL__sub_I_CCUserDefault_cpp = Module["__GLOBAL__sub_I_CCUserDefault_cpp"] = asm["__GLOBAL__sub_I_CCUserDefault_cpp"];
-var _malloc = Module["_malloc"] = asm["_malloc"];
-var _pthread_mutex_lock = Module["_pthread_mutex_lock"] = asm["_pthread_mutex_lock"];
-var _memalign = Module["_memalign"] = asm["_memalign"];
-var __GLOBAL__sub_I_CCEventListenerFocus_cpp = Module["__GLOBAL__sub_I_CCEventListenerFocus_cpp"] = asm["__GLOBAL__sub_I_CCEventListenerFocus_cpp"];
-var __GLOBAL__sub_I_CCPhysicsBody_cpp = Module["__GLOBAL__sub_I_CCPhysicsBody_cpp"] = asm["__GLOBAL__sub_I_CCPhysicsBody_cpp"];
-var dynCall_iiiiiiii = Module["dynCall_iiiiiiii"] = asm["dynCall_iiiiiiii"];
-var dynCall_iiiiiid = Module["dynCall_iiiiiid"] = asm["dynCall_iiiiiid"];
-var dynCall_viiiifffffifi = Module["dynCall_viiiifffffifi"] = asm["dynCall_viiiifffffifi"];
-var dynCall_vif = Module["dynCall_vif"] = asm["dynCall_vif"];
-var dynCall_viifii = Module["dynCall_viifii"] = asm["dynCall_viifii"];
-var dynCall_vid = Module["dynCall_vid"] = asm["dynCall_vid"];
-var dynCall_viiiii = Module["dynCall_viiiii"] = asm["dynCall_viiiii"];
-var dynCall_iiiiiiiiii = Module["dynCall_iiiiiiiiii"] = asm["dynCall_iiiiiiiiii"];
-var dynCall_vii = Module["dynCall_vii"] = asm["dynCall_vii"];
-var dynCall_iiiiiii = Module["dynCall_iiiiiii"] = asm["dynCall_iiiiiii"];
-var dynCall_viff = Module["dynCall_viff"] = asm["dynCall_viff"];
-var dynCall_ii = Module["dynCall_ii"] = asm["dynCall_ii"];
-var dynCall_vifffi = Module["dynCall_vifffi"] = asm["dynCall_vifffi"];
-var dynCall_viifi = Module["dynCall_viifi"] = asm["dynCall_viifi"];
-var dynCall_viiiiiiiii = Module["dynCall_viiiiiiiii"] = asm["dynCall_viiiiiiiii"];
-var dynCall_viiff = Module["dynCall_viiff"] = asm["dynCall_viiff"];
-var dynCall_viiiiiiiiiiii = Module["dynCall_viiiiiiiiiiii"] = asm["dynCall_viiiiiiiiiiii"];
-var dynCall_viffff = Module["dynCall_viffff"] = asm["dynCall_viffff"];
-var dynCall_viffiii = Module["dynCall_viffiii"] = asm["dynCall_viffiii"];
-var dynCall_iiiiii = Module["dynCall_iiiiii"] = asm["dynCall_iiiiii"];
-var dynCall_viiifii = Module["dynCall_viiifii"] = asm["dynCall_viiifii"];
-var dynCall_fiifii = Module["dynCall_fiifii"] = asm["dynCall_fiifii"];
-var dynCall_fiiiiiiiii = Module["dynCall_fiiiiiiiii"] = asm["dynCall_fiiiiiiiii"];
-var dynCall_jii = Module["dynCall_jii"] = asm["dynCall_jii"];
-var dynCall_iiii = Module["dynCall_iiii"] = asm["dynCall_iiii"];
-var dynCall_viiif = Module["dynCall_viiif"] = asm["dynCall_viiif"];
-var dynCall_fif = Module["dynCall_fif"] = asm["dynCall_fif"];
-var dynCall_viffi = Module["dynCall_viffi"] = asm["dynCall_viffi"];
-var dynCall_iiiji = Module["dynCall_iiiji"] = asm["dynCall_iiiji"];
-var dynCall_vifi = Module["dynCall_vifi"] = asm["dynCall_vifi"];
-var dynCall_viiiiif = Module["dynCall_viiiiif"] = asm["dynCall_viiiiif"];
-var dynCall_viiiiii = Module["dynCall_viiiiii"] = asm["dynCall_viiiiii"];
-var dynCall_iiif = Module["dynCall_iiif"] = asm["dynCall_iiif"];
-var dynCall_viid = Module["dynCall_viid"] = asm["dynCall_viid"];
-var dynCall_fiii = Module["dynCall_fiii"] = asm["dynCall_fiii"];
-var dynCall_vi = Module["dynCall_vi"] = asm["dynCall_vi"];
-var dynCall_iiiiiiiiiii = Module["dynCall_iiiiiiiiiii"] = asm["dynCall_iiiiiiiiiii"];
-var dynCall_fiif = Module["dynCall_fiif"] = asm["dynCall_fiif"];
-var dynCall_fiiiiiiiiii = Module["dynCall_fiiiiiiiiii"] = asm["dynCall_fiiiiiiiiii"];
-var dynCall_viiifi = Module["dynCall_viiifi"] = asm["dynCall_viiifi"];
-var dynCall_fiiiii = Module["dynCall_fiiiii"] = asm["dynCall_fiiiii"];
-var dynCall_diid = Module["dynCall_diid"] = asm["dynCall_diid"];
-var dynCall_iif = Module["dynCall_iif"] = asm["dynCall_iif"];
-var dynCall_viiiiiii = Module["dynCall_viiiiiii"] = asm["dynCall_viiiiiii"];
-var dynCall_viiiiiiiif = Module["dynCall_viiiiiiiif"] = asm["dynCall_viiiiiiiif"];
-var dynCall_vifii = Module["dynCall_vifii"] = asm["dynCall_vifii"];
-var dynCall_fi = Module["dynCall_fi"] = asm["dynCall_fi"];
-var dynCall_viiiiiiiiii = Module["dynCall_viiiiiiiiii"] = asm["dynCall_viiiiiiiiii"];
-var dynCall_iii = Module["dynCall_iii"] = asm["dynCall_iii"];
-var dynCall_viifiii = Module["dynCall_viifiii"] = asm["dynCall_viifiii"];
-var dynCall_i = Module["dynCall_i"] = asm["dynCall_i"];
-var dynCall_viiiiffffiif = Module["dynCall_viiiiffffiif"] = asm["dynCall_viiiiffffiif"];
-var dynCall_viijii = Module["dynCall_viijii"] = asm["dynCall_viijii"];
-var dynCall_fiiii = Module["dynCall_fiiii"] = asm["dynCall_fiiii"];
-var dynCall_iiiii = Module["dynCall_iiiii"] = asm["dynCall_iiiii"];
-var dynCall_iifif = Module["dynCall_iifif"] = asm["dynCall_iifif"];
-var dynCall_viiiifii = Module["dynCall_viiiifii"] = asm["dynCall_viiiifii"];
-var dynCall_iiiiij = Module["dynCall_iiiiij"] = asm["dynCall_iiiiij"];
-var dynCall_viii = Module["dynCall_viii"] = asm["dynCall_viii"];
-var dynCall_v = Module["dynCall_v"] = asm["dynCall_v"];
-var dynCall_iiiiiiiii = Module["dynCall_iiiiiiiii"] = asm["dynCall_iiiiiiiii"];
-var dynCall_iiiifff = Module["dynCall_iiiifff"] = asm["dynCall_iiiifff"];
-var dynCall_viif = Module["dynCall_viif"] = asm["dynCall_viif"];
-var dynCall_viiii = Module["dynCall_viiii"] = asm["dynCall_viiii"];
-var dynCall_fiiifii = Module["dynCall_fiiifii"] = asm["dynCall_fiiifii"];
-var dynCall_iiiiid = Module["dynCall_iiiiid"] = asm["dynCall_iiiiid"];
-var dynCall_vfiii = Module["dynCall_vfiii"] = asm["dynCall_vfiii"];
-var dynCall_iiiif = Module["dynCall_iiiif"] = asm["dynCall_iiiif"];
+Module["asm"] = asm;
+var __GLOBAL__sub_I_ccTypes_cpp = Module["__GLOBAL__sub_I_ccTypes_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_ccTypes_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCData_cpp = Module["__GLOBAL__sub_I_CCData_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCData_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCFontFreeType_cpp = Module["__GLOBAL__sub_I_CCFontFreeType_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCFontFreeType_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_ccUtils_cpp = Module["__GLOBAL__sub_I_ccUtils_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_ccUtils_cpp"].apply(null, arguments) };
+var _main = Module["_main"] = function() { return Module["asm"]["_main"].apply(null, arguments) };
+var __GLOBAL__sub_I_UIScrollViewBar_cpp = Module["__GLOBAL__sub_I_UIScrollViewBar_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIScrollViewBar_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCCamera_cpp = Module["__GLOBAL__sub_I_CCCamera_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCCamera_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_AudioEngine_cpp = Module["__GLOBAL__sub_I_AudioEngine_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_AudioEngine_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_AudioEngine_emscripten_cpp = Module["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCDrawingPrimitives_cpp = Module["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCValue_cpp = Module["__GLOBAL__sub_I_CCValue_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCValue_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCFrameBuffer_cpp = Module["__GLOBAL__sub_I_CCFrameBuffer_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCFrameBuffer_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCGLProgram_cpp = Module["__GLOBAL__sub_I_CCGLProgram_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCGLProgram_cpp"].apply(null, arguments) };
+var _fflush = Module["_fflush"] = function() { return Module["asm"]["_fflush"].apply(null, arguments) };
+var ___cxa_is_pointer_type = Module["___cxa_is_pointer_type"] = function() { return Module["asm"]["___cxa_is_pointer_type"].apply(null, arguments) };
+var _memset = Module["_memset"] = function() { return Module["asm"]["_memset"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCEventListenerAcceleration_cpp = Module["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"].apply(null, arguments) };
+var _sbrk = Module["_sbrk"] = function() { return Module["asm"]["_sbrk"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCGLView_cpp = Module["__GLOBAL__sub_I_CCGLView_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCGLView_cpp"].apply(null, arguments) };
+var _memcpy = Module["_memcpy"] = function() { return Module["asm"]["_memcpy"].apply(null, arguments) };
+var __GLOBAL__sub_I_iostream_cpp = Module["__GLOBAL__sub_I_iostream_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_iostream_cpp"].apply(null, arguments) };
+var _llvm_bswap_i32 = Module["_llvm_bswap_i32"] = function() { return Module["asm"]["_llvm_bswap_i32"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCGLProgramState_cpp = Module["__GLOBAL__sub_I_CCGLProgramState_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCGLProgramState_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_UIScrollView_cpp = Module["__GLOBAL__sub_I_UIScrollView_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIScrollView_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCTexture2D_cpp = Module["__GLOBAL__sub_I_CCTexture2D_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCTexture2D_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_UIListView_cpp = Module["__GLOBAL__sub_I_UIListView_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIListView_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_UISlider_cpp = Module["__GLOBAL__sub_I_UISlider_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UISlider_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCVertexAttribBinding_cpp = Module["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"].apply(null, arguments) };
+var _ntohs = Module["_ntohs"] = function() { return Module["asm"]["_ntohs"].apply(null, arguments) };
+var _htonl = Module["_htonl"] = function() { return Module["asm"]["_htonl"].apply(null, arguments) };
+var _realloc = Module["_realloc"] = function() { return Module["asm"]["_realloc"].apply(null, arguments) };
+var _pthread_self = Module["_pthread_self"] = function() { return Module["asm"]["_pthread_self"].apply(null, arguments) };
+var _pthread_mutex_unlock = Module["_pthread_mutex_unlock"] = function() { return Module["asm"]["_pthread_mutex_unlock"].apply(null, arguments) };
+var __GLOBAL__I_000101 = Module["__GLOBAL__I_000101"] = function() { return Module["asm"]["__GLOBAL__I_000101"].apply(null, arguments) };
+var _llvm_bswap_i16 = Module["_llvm_bswap_i16"] = function() { return Module["asm"]["_llvm_bswap_i16"].apply(null, arguments) };
+var __GLOBAL__sub_I_ZipUtils_cpp = Module["__GLOBAL__sub_I_ZipUtils_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_ZipUtils_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_UIPageView_cpp = Module["__GLOBAL__sub_I_UIPageView_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIPageView_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCFontAtlasCache_cpp = Module["__GLOBAL__sub_I_CCFontAtlasCache_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCFontAtlasCache_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCEventListenerTouch_cpp = Module["__GLOBAL__sub_I_CCEventListenerTouch_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerTouch_cpp"].apply(null, arguments) };
+var _htons = Module["_htons"] = function() { return Module["asm"]["_htons"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCMenuItem_cpp = Module["__GLOBAL__sub_I_CCMenuItem_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCMenuItem_cpp"].apply(null, arguments) };
+var _pthread_cond_broadcast = Module["_pthread_cond_broadcast"] = function() { return Module["asm"]["_pthread_cond_broadcast"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCEventListenerKeyboard_cpp = Module["__GLOBAL__sub_I_CCEventListenerKeyboard_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerKeyboard_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCEventListenerMouse_cpp = Module["__GLOBAL__sub_I_CCEventListenerMouse_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerMouse_cpp"].apply(null, arguments) };
+var ___errno_location = Module["___errno_location"] = function() { return Module["asm"]["___errno_location"].apply(null, arguments) };
+var runPostSets = Module["runPostSets"] = function() { return Module["asm"]["runPostSets"].apply(null, arguments) };
+var _testSetjmp = Module["_testSetjmp"] = function() { return Module["asm"]["_testSetjmp"].apply(null, arguments) };
+var _saveSetjmp = Module["_saveSetjmp"] = function() { return Module["asm"]["_saveSetjmp"].apply(null, arguments) };
+var _free = Module["_free"] = function() { return Module["asm"]["_free"].apply(null, arguments) };
+var ___cxa_can_catch = Module["___cxa_can_catch"] = function() { return Module["asm"]["___cxa_can_catch"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCConsole_cpp = Module["__GLOBAL__sub_I_CCConsole_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCConsole_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_btQuickprof_cpp = Module["__GLOBAL__sub_I_btQuickprof_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_btQuickprof_cpp"].apply(null, arguments) };
+var _memmove = Module["_memmove"] = function() { return Module["asm"]["_memmove"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCTextureCache_cpp = Module["__GLOBAL__sub_I_CCTextureCache_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCTextureCache_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCImage_cpp = Module["__GLOBAL__sub_I_CCImage_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCImage_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_UILayout_cpp = Module["__GLOBAL__sub_I_UILayout_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UILayout_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCUserDefault_cpp = Module["__GLOBAL__sub_I_CCUserDefault_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCUserDefault_cpp"].apply(null, arguments) };
+var _malloc = Module["_malloc"] = function() { return Module["asm"]["_malloc"].apply(null, arguments) };
+var _pthread_mutex_lock = Module["_pthread_mutex_lock"] = function() { return Module["asm"]["_pthread_mutex_lock"].apply(null, arguments) };
+var _memalign = Module["_memalign"] = function() { return Module["asm"]["_memalign"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCEventListenerFocus_cpp = Module["__GLOBAL__sub_I_CCEventListenerFocus_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerFocus_cpp"].apply(null, arguments) };
+var __GLOBAL__sub_I_CCPhysicsBody_cpp = Module["__GLOBAL__sub_I_CCPhysicsBody_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCPhysicsBody_cpp"].apply(null, arguments) };
+var dynCall_iiiiiiii = Module["dynCall_iiiiiiii"] = function() { return Module["asm"]["dynCall_iiiiiiii"].apply(null, arguments) };
+var dynCall_iiiiiid = Module["dynCall_iiiiiid"] = function() { return Module["asm"]["dynCall_iiiiiid"].apply(null, arguments) };
+var dynCall_viiiifffffifi = Module["dynCall_viiiifffffifi"] = function() { return Module["asm"]["dynCall_viiiifffffifi"].apply(null, arguments) };
+var dynCall_vif = Module["dynCall_vif"] = function() { return Module["asm"]["dynCall_vif"].apply(null, arguments) };
+var dynCall_viifii = Module["dynCall_viifii"] = function() { return Module["asm"]["dynCall_viifii"].apply(null, arguments) };
+var dynCall_vid = Module["dynCall_vid"] = function() { return Module["asm"]["dynCall_vid"].apply(null, arguments) };
+var dynCall_viiiii = Module["dynCall_viiiii"] = function() { return Module["asm"]["dynCall_viiiii"].apply(null, arguments) };
+var dynCall_iiiiiiiiii = Module["dynCall_iiiiiiiiii"] = function() { return Module["asm"]["dynCall_iiiiiiiiii"].apply(null, arguments) };
+var dynCall_vii = Module["dynCall_vii"] = function() { return Module["asm"]["dynCall_vii"].apply(null, arguments) };
+var dynCall_iiiiiii = Module["dynCall_iiiiiii"] = function() { return Module["asm"]["dynCall_iiiiiii"].apply(null, arguments) };
+var dynCall_viff = Module["dynCall_viff"] = function() { return Module["asm"]["dynCall_viff"].apply(null, arguments) };
+var dynCall_ii = Module["dynCall_ii"] = function() { return Module["asm"]["dynCall_ii"].apply(null, arguments) };
+var dynCall_vifffi = Module["dynCall_vifffi"] = function() { return Module["asm"]["dynCall_vifffi"].apply(null, arguments) };
+var dynCall_viifi = Module["dynCall_viifi"] = function() { return Module["asm"]["dynCall_viifi"].apply(null, arguments) };
+var dynCall_viiiiiiiii = Module["dynCall_viiiiiiiii"] = function() { return Module["asm"]["dynCall_viiiiiiiii"].apply(null, arguments) };
+var dynCall_viiff = Module["dynCall_viiff"] = function() { return Module["asm"]["dynCall_viiff"].apply(null, arguments) };
+var dynCall_viiiiiiiiiiii = Module["dynCall_viiiiiiiiiiii"] = function() { return Module["asm"]["dynCall_viiiiiiiiiiii"].apply(null, arguments) };
+var dynCall_viffff = Module["dynCall_viffff"] = function() { return Module["asm"]["dynCall_viffff"].apply(null, arguments) };
+var dynCall_viffiii = Module["dynCall_viffiii"] = function() { return Module["asm"]["dynCall_viffiii"].apply(null, arguments) };
+var dynCall_iiiiii = Module["dynCall_iiiiii"] = function() { return Module["asm"]["dynCall_iiiiii"].apply(null, arguments) };
+var dynCall_viiifii = Module["dynCall_viiifii"] = function() { return Module["asm"]["dynCall_viiifii"].apply(null, arguments) };
+var dynCall_fiifii = Module["dynCall_fiifii"] = function() { return Module["asm"]["dynCall_fiifii"].apply(null, arguments) };
+var dynCall_fiiiiiiiii = Module["dynCall_fiiiiiiiii"] = function() { return Module["asm"]["dynCall_fiiiiiiiii"].apply(null, arguments) };
+var dynCall_jii = Module["dynCall_jii"] = function() { return Module["asm"]["dynCall_jii"].apply(null, arguments) };
+var dynCall_iiii = Module["dynCall_iiii"] = function() { return Module["asm"]["dynCall_iiii"].apply(null, arguments) };
+var dynCall_viiif = Module["dynCall_viiif"] = function() { return Module["asm"]["dynCall_viiif"].apply(null, arguments) };
+var dynCall_fif = Module["dynCall_fif"] = function() { return Module["asm"]["dynCall_fif"].apply(null, arguments) };
+var dynCall_viffi = Module["dynCall_viffi"] = function() { return Module["asm"]["dynCall_viffi"].apply(null, arguments) };
+var dynCall_iiiji = Module["dynCall_iiiji"] = function() { return Module["asm"]["dynCall_iiiji"].apply(null, arguments) };
+var dynCall_vifi = Module["dynCall_vifi"] = function() { return Module["asm"]["dynCall_vifi"].apply(null, arguments) };
+var dynCall_viiiiif = Module["dynCall_viiiiif"] = function() { return Module["asm"]["dynCall_viiiiif"].apply(null, arguments) };
+var dynCall_viiiiii = Module["dynCall_viiiiii"] = function() { return Module["asm"]["dynCall_viiiiii"].apply(null, arguments) };
+var dynCall_iiif = Module["dynCall_iiif"] = function() { return Module["asm"]["dynCall_iiif"].apply(null, arguments) };
+var dynCall_viid = Module["dynCall_viid"] = function() { return Module["asm"]["dynCall_viid"].apply(null, arguments) };
+var dynCall_fiii = Module["dynCall_fiii"] = function() { return Module["asm"]["dynCall_fiii"].apply(null, arguments) };
+var dynCall_vi = Module["dynCall_vi"] = function() { return Module["asm"]["dynCall_vi"].apply(null, arguments) };
+var dynCall_iiiiiiiiiii = Module["dynCall_iiiiiiiiiii"] = function() { return Module["asm"]["dynCall_iiiiiiiiiii"].apply(null, arguments) };
+var dynCall_fiif = Module["dynCall_fiif"] = function() { return Module["asm"]["dynCall_fiif"].apply(null, arguments) };
+var dynCall_fiiiiiiiiii = Module["dynCall_fiiiiiiiiii"] = function() { return Module["asm"]["dynCall_fiiiiiiiiii"].apply(null, arguments) };
+var dynCall_viiifi = Module["dynCall_viiifi"] = function() { return Module["asm"]["dynCall_viiifi"].apply(null, arguments) };
+var dynCall_fiiiii = Module["dynCall_fiiiii"] = function() { return Module["asm"]["dynCall_fiiiii"].apply(null, arguments) };
+var dynCall_diid = Module["dynCall_diid"] = function() { return Module["asm"]["dynCall_diid"].apply(null, arguments) };
+var dynCall_iif = Module["dynCall_iif"] = function() { return Module["asm"]["dynCall_iif"].apply(null, arguments) };
+var dynCall_viiiiiii = Module["dynCall_viiiiiii"] = function() { return Module["asm"]["dynCall_viiiiiii"].apply(null, arguments) };
+var dynCall_viiiiiiiif = Module["dynCall_viiiiiiiif"] = function() { return Module["asm"]["dynCall_viiiiiiiif"].apply(null, arguments) };
+var dynCall_vifii = Module["dynCall_vifii"] = function() { return Module["asm"]["dynCall_vifii"].apply(null, arguments) };
+var dynCall_fi = Module["dynCall_fi"] = function() { return Module["asm"]["dynCall_fi"].apply(null, arguments) };
+var dynCall_viiiiiiiiii = Module["dynCall_viiiiiiiiii"] = function() { return Module["asm"]["dynCall_viiiiiiiiii"].apply(null, arguments) };
+var dynCall_iii = Module["dynCall_iii"] = function() { return Module["asm"]["dynCall_iii"].apply(null, arguments) };
+var dynCall_viifiii = Module["dynCall_viifiii"] = function() { return Module["asm"]["dynCall_viifiii"].apply(null, arguments) };
+var dynCall_i = Module["dynCall_i"] = function() { return Module["asm"]["dynCall_i"].apply(null, arguments) };
+var dynCall_viiiiffffiif = Module["dynCall_viiiiffffiif"] = function() { return Module["asm"]["dynCall_viiiiffffiif"].apply(null, arguments) };
+var dynCall_viijii = Module["dynCall_viijii"] = function() { return Module["asm"]["dynCall_viijii"].apply(null, arguments) };
+var dynCall_fiiii = Module["dynCall_fiiii"] = function() { return Module["asm"]["dynCall_fiiii"].apply(null, arguments) };
+var dynCall_iiiii = Module["dynCall_iiiii"] = function() { return Module["asm"]["dynCall_iiiii"].apply(null, arguments) };
+var dynCall_iifif = Module["dynCall_iifif"] = function() { return Module["asm"]["dynCall_iifif"].apply(null, arguments) };
+var dynCall_viiiifii = Module["dynCall_viiiifii"] = function() { return Module["asm"]["dynCall_viiiifii"].apply(null, arguments) };
+var dynCall_iiiiij = Module["dynCall_iiiiij"] = function() { return Module["asm"]["dynCall_iiiiij"].apply(null, arguments) };
+var dynCall_viii = Module["dynCall_viii"] = function() { return Module["asm"]["dynCall_viii"].apply(null, arguments) };
+var dynCall_v = Module["dynCall_v"] = function() { return Module["asm"]["dynCall_v"].apply(null, arguments) };
+var dynCall_iiiiiiiii = Module["dynCall_iiiiiiiii"] = function() { return Module["asm"]["dynCall_iiiiiiiii"].apply(null, arguments) };
+var dynCall_iiiifff = Module["dynCall_iiiifff"] = function() { return Module["asm"]["dynCall_iiiifff"].apply(null, arguments) };
+var dynCall_viif = Module["dynCall_viif"] = function() { return Module["asm"]["dynCall_viif"].apply(null, arguments) };
+var dynCall_viiii = Module["dynCall_viiii"] = function() { return Module["asm"]["dynCall_viiii"].apply(null, arguments) };
+var dynCall_fiiifii = Module["dynCall_fiiifii"] = function() { return Module["asm"]["dynCall_fiiifii"].apply(null, arguments) };
+var dynCall_iiiiid = Module["dynCall_iiiiid"] = function() { return Module["asm"]["dynCall_iiiiid"].apply(null, arguments) };
+var dynCall_vfiii = Module["dynCall_vfiii"] = function() { return Module["asm"]["dynCall_vfiii"].apply(null, arguments) };
+var dynCall_iiiif = Module["dynCall_iiiif"] = function() { return Module["asm"]["dynCall_iiiif"].apply(null, arguments) };
 ;
 
 Runtime.stackAlloc = asm['stackAlloc'];
