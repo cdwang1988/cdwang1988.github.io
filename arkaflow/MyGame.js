@@ -1645,7 +1645,7 @@ function integrateWasmJS(Module) {
     function receiveInstance(instance) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
-      Module['asm'] = exports;
+      asm = Module['asm'] = exports;
       Module["usingWasm"] = true;
     }
     Module['printErr']('asynchronously preparing wasm');
@@ -12739,13 +12739,13 @@ var dynCall_vfiii = Module["dynCall_vfiii"] = function() { return Module["asm"][
 var dynCall_iiiif = Module["dynCall_iiiif"] = function() { return Module["asm"]["dynCall_iiiif"].apply(null, arguments) };
 ;
 
-Runtime.stackAlloc = asm['stackAlloc'];
-Runtime.stackSave = asm['stackSave'];
-Runtime.stackRestore = asm['stackRestore'];
-Runtime.establishStackSpace = asm['establishStackSpace'];
+Runtime.stackAlloc = function() { return Module["asm"]["stackAlloc"].apply(null, arguments) };
+Runtime.stackSave = function() { return Module["asm"]["stackSave"].apply(null, arguments) };
+Runtime.stackRestore = function() { return Module["asm"]["stackRestore"].apply(null, arguments) };
+Runtime.establishStackSpace = function() { return Module["asm"]["establishStackSpace"].apply(null, arguments) };
 
-Runtime.setTempRet0 = asm['setTempRet0'];
-Runtime.getTempRet0 = asm['getTempRet0'];
+Runtime.setTempRet0 = function() { return Module["asm"]["setTempRet0"].apply(null, arguments) };
+Runtime.getTempRet0 = function() { return Module["asm"]["getTempRet0"].apply(null, arguments) };
 
 
 
