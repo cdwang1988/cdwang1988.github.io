@@ -1645,7 +1645,7 @@ function integrateWasmJS(Module) {
     function receiveInstance(instance) {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
-      asm = Module['asm'] = exports;
+      Module['asm'] = exports;
       Module["usingWasm"] = true;
     }
     Module['printErr']('asynchronously preparing wasm');
@@ -9134,13 +9134,13 @@ function copyTempDouble(ptr) {
       var thrown = EXCEPTIONS.last;
       if (!thrown) {
         // just pass through the null ptr
-        return ((asm["setTempRet0"](0),0)|0);
+        return ((Runtime.setTempRet0(0),0)|0);
       }
       var info = EXCEPTIONS.infos[thrown];
       var throwntype = info.type;
       if (!throwntype) {
         // just pass through the thrown ptr
-        return ((asm["setTempRet0"](0),thrown)|0);
+        return ((Runtime.setTempRet0(0),thrown)|0);
       }
       var typeArray = Array.prototype.slice.call(arguments);
   
@@ -9157,14 +9157,14 @@ function copyTempDouble(ptr) {
         if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
           thrown = HEAP32[((thrown)>>2)]; // undo indirection
           info.adjusted = thrown;
-          return ((asm["setTempRet0"](typeArray[i]),thrown)|0);
+          return ((Runtime.setTempRet0(typeArray[i]),thrown)|0);
         }
       }
       // Shouldn't happen unless we have bogus data in typeArray
       // or encounter a type for which emscripten doesn't have suitable
       // typeinfo defined. Best-efforts match just in case.
       thrown = HEAP32[((thrown)>>2)]; // undo indirection
-      return ((asm["setTempRet0"](throwntype),thrown)|0);
+      return ((Runtime.setTempRet0(throwntype),thrown)|0);
     }function ___gxx_personality_v0() {
     }
 
@@ -10063,7 +10063,7 @@ function copyTempDouble(ptr) {
   
    
   Module["_testSetjmp"] = _testSetjmp;function _longjmp(env, value) {
-      asm['setThrew'](env, value || 1);
+      Module['setThrew'](env, value || 1);
       throw 'longjmp';
     }function _emscripten_longjmp(env, value) {
       _longjmp(env, value);
@@ -11992,7 +11992,7 @@ function invoke_iiiiiiii(index,a1,a2,a3,a4,a5,a6,a7) {
     return Module["dynCall_iiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12001,7 +12001,7 @@ function invoke_iiiiiid(index,a1,a2,a3,a4,a5,a6) {
     return Module["dynCall_iiiiiid"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12010,7 +12010,7 @@ function invoke_viiiifffffifi(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12) {
     Module["dynCall_viiiifffffifi"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12019,7 +12019,7 @@ function invoke_vif(index,a1,a2) {
     Module["dynCall_vif"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12028,7 +12028,7 @@ function invoke_viifii(index,a1,a2,a3,a4,a5) {
     Module["dynCall_viifii"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12037,7 +12037,7 @@ function invoke_vid(index,a1,a2) {
     Module["dynCall_vid"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12046,7 +12046,7 @@ function invoke_viiiii(index,a1,a2,a3,a4,a5) {
     Module["dynCall_viiiii"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12055,7 +12055,7 @@ function invoke_iiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
     return Module["dynCall_iiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12064,7 +12064,7 @@ function invoke_vii(index,a1,a2) {
     Module["dynCall_vii"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12073,7 +12073,7 @@ function invoke_iiiiiii(index,a1,a2,a3,a4,a5,a6) {
     return Module["dynCall_iiiiiii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12082,7 +12082,7 @@ function invoke_viff(index,a1,a2,a3) {
     Module["dynCall_viff"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12091,7 +12091,7 @@ function invoke_ii(index,a1) {
     return Module["dynCall_ii"](index,a1);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12100,7 +12100,7 @@ function invoke_vifffi(index,a1,a2,a3,a4,a5) {
     Module["dynCall_vifffi"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12109,7 +12109,7 @@ function invoke_viifi(index,a1,a2,a3,a4) {
     Module["dynCall_viifi"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12118,7 +12118,7 @@ function invoke_viiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
     Module["dynCall_viiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12127,7 +12127,7 @@ function invoke_viiff(index,a1,a2,a3,a4) {
     Module["dynCall_viiff"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12136,7 +12136,7 @@ function invoke_viiiiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12) {
     Module["dynCall_viiiiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12145,7 +12145,7 @@ function invoke_viffff(index,a1,a2,a3,a4,a5) {
     Module["dynCall_viffff"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12154,7 +12154,7 @@ function invoke_viffiii(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viffiii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12163,7 +12163,7 @@ function invoke_iiiiii(index,a1,a2,a3,a4,a5) {
     return Module["dynCall_iiiiii"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12172,7 +12172,7 @@ function invoke_viiifii(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viiifii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12181,7 +12181,7 @@ function invoke_fiifii(index,a1,a2,a3,a4,a5) {
     return Module["dynCall_fiifii"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12190,7 +12190,7 @@ function invoke_fiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
     return Module["dynCall_fiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12199,7 +12199,7 @@ function invoke_jii(index,a1,a2) {
     return Module["dynCall_jii"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12208,7 +12208,7 @@ function invoke_iiii(index,a1,a2,a3) {
     return Module["dynCall_iiii"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12217,7 +12217,7 @@ function invoke_viiif(index,a1,a2,a3,a4) {
     Module["dynCall_viiif"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12226,7 +12226,7 @@ function invoke_fif(index,a1,a2) {
     return Module["dynCall_fif"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12235,7 +12235,7 @@ function invoke_viffi(index,a1,a2,a3,a4) {
     Module["dynCall_viffi"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12244,7 +12244,7 @@ function invoke_iiiji(index,a1,a2,a3,a4,a5) {
     return Module["dynCall_iiiji"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12253,7 +12253,7 @@ function invoke_vifi(index,a1,a2,a3) {
     Module["dynCall_vifi"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12262,7 +12262,7 @@ function invoke_viiiiif(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viiiiif"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12271,7 +12271,7 @@ function invoke_viiiiii(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viiiiii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12280,7 +12280,7 @@ function invoke_iiif(index,a1,a2,a3) {
     return Module["dynCall_iiif"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12289,7 +12289,7 @@ function invoke_viid(index,a1,a2,a3) {
     Module["dynCall_viid"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12298,7 +12298,7 @@ function invoke_fiii(index,a1,a2,a3) {
     return Module["dynCall_fiii"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12307,7 +12307,7 @@ function invoke_vi(index,a1) {
     Module["dynCall_vi"](index,a1);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12316,7 +12316,7 @@ function invoke_iiiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10) {
     return Module["dynCall_iiiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12325,7 +12325,7 @@ function invoke_fiif(index,a1,a2,a3) {
     return Module["dynCall_fiif"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12334,7 +12334,7 @@ function invoke_fiiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10) {
     return Module["dynCall_fiiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12343,7 +12343,7 @@ function invoke_viiifi(index,a1,a2,a3,a4,a5) {
     Module["dynCall_viiifi"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12352,7 +12352,7 @@ function invoke_fiiiii(index,a1,a2,a3,a4,a5) {
     return Module["dynCall_fiiiii"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12361,7 +12361,7 @@ function invoke_diid(index,a1,a2,a3) {
     return Module["dynCall_diid"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12370,7 +12370,7 @@ function invoke_iif(index,a1,a2) {
     return Module["dynCall_iif"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12379,7 +12379,7 @@ function invoke_viiiiiii(index,a1,a2,a3,a4,a5,a6,a7) {
     Module["dynCall_viiiiiii"](index,a1,a2,a3,a4,a5,a6,a7);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12388,7 +12388,7 @@ function invoke_viiiiiiiif(index,a1,a2,a3,a4,a5,a6,a7,a8,a9) {
     Module["dynCall_viiiiiiiif"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12397,7 +12397,7 @@ function invoke_vifii(index,a1,a2,a3,a4) {
     Module["dynCall_vifii"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12406,7 +12406,7 @@ function invoke_fi(index,a1) {
     return Module["dynCall_fi"](index,a1);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12415,7 +12415,7 @@ function invoke_viiiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10) {
     Module["dynCall_viiiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12424,7 +12424,7 @@ function invoke_iii(index,a1,a2) {
     return Module["dynCall_iii"](index,a1,a2);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12433,7 +12433,7 @@ function invoke_viifiii(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viifiii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12442,7 +12442,7 @@ function invoke_i(index) {
     return Module["dynCall_i"](index);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12451,7 +12451,7 @@ function invoke_viiiiffffiif(index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11) {
     Module["dynCall_viiiiffffiif"](index,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12460,7 +12460,7 @@ function invoke_viijii(index,a1,a2,a3,a4,a5,a6) {
     Module["dynCall_viijii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12469,7 +12469,7 @@ function invoke_fiiii(index,a1,a2,a3,a4) {
     return Module["dynCall_fiiii"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12478,7 +12478,7 @@ function invoke_iiiii(index,a1,a2,a3,a4) {
     return Module["dynCall_iiiii"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12487,7 +12487,7 @@ function invoke_iifif(index,a1,a2,a3,a4) {
     return Module["dynCall_iifif"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12496,7 +12496,7 @@ function invoke_viiiifii(index,a1,a2,a3,a4,a5,a6,a7) {
     Module["dynCall_viiiifii"](index,a1,a2,a3,a4,a5,a6,a7);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12505,7 +12505,7 @@ function invoke_iiiiij(index,a1,a2,a3,a4,a5,a6) {
     return Module["dynCall_iiiiij"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12514,7 +12514,7 @@ function invoke_viii(index,a1,a2,a3) {
     Module["dynCall_viii"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12523,7 +12523,7 @@ function invoke_v(index) {
     Module["dynCall_v"](index);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12532,7 +12532,7 @@ function invoke_iiiiiiiii(index,a1,a2,a3,a4,a5,a6,a7,a8) {
     return Module["dynCall_iiiiiiiii"](index,a1,a2,a3,a4,a5,a6,a7,a8);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12541,7 +12541,7 @@ function invoke_iiiifff(index,a1,a2,a3,a4,a5,a6) {
     return Module["dynCall_iiiifff"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12550,7 +12550,7 @@ function invoke_viif(index,a1,a2,a3) {
     Module["dynCall_viif"](index,a1,a2,a3);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12559,7 +12559,7 @@ function invoke_viiii(index,a1,a2,a3,a4) {
     Module["dynCall_viiii"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12568,7 +12568,7 @@ function invoke_fiiifii(index,a1,a2,a3,a4,a5,a6) {
     return Module["dynCall_fiiifii"](index,a1,a2,a3,a4,a5,a6);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12577,7 +12577,7 @@ function invoke_iiiiid(index,a1,a2,a3,a4,a5) {
     return Module["dynCall_iiiiid"](index,a1,a2,a3,a4,a5);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12586,7 +12586,7 @@ function invoke_vfiii(index,a1,a2,a3,a4) {
     Module["dynCall_vfiii"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12595,7 +12595,7 @@ function invoke_iiiif(index,a1,a2,a3,a4) {
     return Module["dynCall_iiiif"](index,a1,a2,a3,a4);
   } catch(e) {
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    asm["setThrew"](1, 0);
+    Module["setThrew"](1, 0);
   }
 }
 
@@ -12615,12 +12615,15 @@ var _main = Module["_main"] = function() { return Module["asm"]["_main"].apply(n
 var __GLOBAL__sub_I_UIScrollViewBar_cpp = Module["__GLOBAL__sub_I_UIScrollViewBar_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIScrollViewBar_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCCamera_cpp = Module["__GLOBAL__sub_I_CCCamera_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCCamera_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_AudioEngine_cpp = Module["__GLOBAL__sub_I_AudioEngine_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_AudioEngine_cpp"].apply(null, arguments) };
+var stackSave = Module["stackSave"] = function() { return Module["asm"]["stackSave"].apply(null, arguments) };
+var setThrew = Module["setThrew"] = function() { return Module["asm"]["setThrew"].apply(null, arguments) };
 var __GLOBAL__sub_I_AudioEngine_emscripten_cpp = Module["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_AudioEngine_emscripten_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCDrawingPrimitives_cpp = Module["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCDrawingPrimitives_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCValue_cpp = Module["__GLOBAL__sub_I_CCValue_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCValue_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCFrameBuffer_cpp = Module["__GLOBAL__sub_I_CCFrameBuffer_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCFrameBuffer_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCGLProgram_cpp = Module["__GLOBAL__sub_I_CCGLProgram_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCGLProgram_cpp"].apply(null, arguments) };
 var _fflush = Module["_fflush"] = function() { return Module["asm"]["_fflush"].apply(null, arguments) };
+var setTempRet0 = Module["setTempRet0"] = function() { return Module["asm"]["setTempRet0"].apply(null, arguments) };
 var ___cxa_is_pointer_type = Module["___cxa_is_pointer_type"] = function() { return Module["asm"]["___cxa_is_pointer_type"].apply(null, arguments) };
 var _memset = Module["_memset"] = function() { return Module["asm"]["_memset"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCEventListenerAcceleration_cpp = Module["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCEventListenerAcceleration_cpp"].apply(null, arguments) };
@@ -12635,6 +12638,8 @@ var __GLOBAL__sub_I_CCTexture2D_cpp = Module["__GLOBAL__sub_I_CCTexture2D_cpp"] 
 var __GLOBAL__sub_I_UIListView_cpp = Module["__GLOBAL__sub_I_UIListView_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UIListView_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_UISlider_cpp = Module["__GLOBAL__sub_I_UISlider_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UISlider_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCVertexAttribBinding_cpp = Module["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCVertexAttribBinding_cpp"].apply(null, arguments) };
+var stackAlloc = Module["stackAlloc"] = function() { return Module["asm"]["stackAlloc"].apply(null, arguments) };
+var getTempRet0 = Module["getTempRet0"] = function() { return Module["asm"]["getTempRet0"].apply(null, arguments) };
 var _ntohs = Module["_ntohs"] = function() { return Module["asm"]["_ntohs"].apply(null, arguments) };
 var _htonl = Module["_htonl"] = function() { return Module["asm"]["_htonl"].apply(null, arguments) };
 var _realloc = Module["_realloc"] = function() { return Module["asm"]["_realloc"].apply(null, arguments) };
@@ -12659,9 +12664,11 @@ var _free = Module["_free"] = function() { return Module["asm"]["_free"].apply(n
 var ___cxa_can_catch = Module["___cxa_can_catch"] = function() { return Module["asm"]["___cxa_can_catch"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCConsole_cpp = Module["__GLOBAL__sub_I_CCConsole_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCConsole_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_btQuickprof_cpp = Module["__GLOBAL__sub_I_btQuickprof_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_btQuickprof_cpp"].apply(null, arguments) };
+var establishStackSpace = Module["establishStackSpace"] = function() { return Module["asm"]["establishStackSpace"].apply(null, arguments) };
 var _memmove = Module["_memmove"] = function() { return Module["asm"]["_memmove"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCTextureCache_cpp = Module["__GLOBAL__sub_I_CCTextureCache_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCTextureCache_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCImage_cpp = Module["__GLOBAL__sub_I_CCImage_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCImage_cpp"].apply(null, arguments) };
+var stackRestore = Module["stackRestore"] = function() { return Module["asm"]["stackRestore"].apply(null, arguments) };
 var __GLOBAL__sub_I_UILayout_cpp = Module["__GLOBAL__sub_I_UILayout_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_UILayout_cpp"].apply(null, arguments) };
 var __GLOBAL__sub_I_CCUserDefault_cpp = Module["__GLOBAL__sub_I_CCUserDefault_cpp"] = function() { return Module["asm"]["__GLOBAL__sub_I_CCUserDefault_cpp"].apply(null, arguments) };
 var _malloc = Module["_malloc"] = function() { return Module["asm"]["_malloc"].apply(null, arguments) };
@@ -12739,13 +12746,13 @@ var dynCall_vfiii = Module["dynCall_vfiii"] = function() { return Module["asm"][
 var dynCall_iiiif = Module["dynCall_iiiif"] = function() { return Module["asm"]["dynCall_iiiif"].apply(null, arguments) };
 ;
 
-Runtime.stackAlloc = function() { return Module["asm"]["stackAlloc"].apply(null, arguments) };
-Runtime.stackSave = function() { return Module["asm"]["stackSave"].apply(null, arguments) };
-Runtime.stackRestore = function() { return Module["asm"]["stackRestore"].apply(null, arguments) };
-Runtime.establishStackSpace = function() { return Module["asm"]["establishStackSpace"].apply(null, arguments) };
+Runtime.stackAlloc = Module['stackAlloc'];
+Runtime.stackSave = Module['stackSave'];
+Runtime.stackRestore = Module['stackRestore'];
+Runtime.establishStackSpace = Module['establishStackSpace'];
 
-Runtime.setTempRet0 = function() { return Module["asm"]["setTempRet0"].apply(null, arguments) };
-Runtime.getTempRet0 = function() { return Module["asm"]["getTempRet0"].apply(null, arguments) };
+Runtime.setTempRet0 = Module['setTempRet0'];
+Runtime.getTempRet0 = Module['getTempRet0'];
 
 
 
