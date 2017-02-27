@@ -1622,6 +1622,85 @@ function integrateWasmJS(Module) {
     return Module['asm'](global, env, providedBuffer);
   }
 
+  function doInstantiateWasm(bytes, importObject) {
+    const dbVersion = 1;
+    const dbName = 'wasm-cache';
+    const storeName = 'wasm-cache';
+    const key = 'indexeddb-cache.wasm';
+
+    // This helper function Promise-ifies the operation of opening an IndexedDB
+    // database and clearing out the cache when the version changes.
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        var request = indexedDB.open(dbName, dbVersion);
+        request.onerror = reject.bind(null, 'Error opening wasm cache database');
+        request.onsuccess = () => { resolve(request.result) };
+        request.onupgradeneeded = event => {
+          var db = request.result;
+          if (db.objectStoreNames.contains(storeName)) {
+              console.log(`Clearing out version ${event.oldVersion} wasm cache`);
+              db.deleteObjectStore(storeName);
+          }
+          console.log(`Creating version ${event.newVersion} wasm cache`);
+          db.createObjectStore(storeName)
+        };
+      });
+    }
+
+    // This helper function Promise-ifies the operation of looking up 'key' in the
+    // given IDBDatabase.
+    function lookupInDatabase(db) {
+      return new Promise((resolve, reject) => {
+        var store = db.transaction([storeName]).objectStore(storeName);
+        var request = store.get(key);
+        request.onerror = reject.bind(null, `Error getting wasm module ${key}`);
+        request.onsuccess = event => {
+          if (request.result)
+            resolve(request.result);
+          else
+            reject(`Module ${key} was not found in wasm cache`);
+        }
+      });
+    }
+
+    // This helper function fires off an async operation to store the given wasm
+    // Module in the given IDBDatabase.
+    function storeInDatabase(db, module) {
+      var store = db.transaction([storeName], 'readwrite').objectStore(storeName);
+      var request = store.put(module, key);
+      request.onerror = err => { console.log(`Failed to store in wasm cache: ${err}`) };
+      request.onsuccess = err => { console.log(`Successfully stored ${key} in wasm cache`) };
+    }
+
+    // With all the Promise helper functions defined, we can now express the core
+    // logic of an IndexedDB cache lookup. We start by trying to open a database.
+    return openDatabase().then(db => {
+      // Now see if we already have a compiled Module with key 'key' in 'db':
+      return lookupInDatabase(db).then(module => {
+        // We do! Instantiate it with the given import object.
+        console.log(`Found ${key} in wasm cache`);
+        return WebAssembly.instantiate(module, importObject).then(instance => {
+          return {module: module, instance: instance};
+        });
+      }, errMsg => {
+        // Nope! Compile from scratch and then store the compiled Module in 'db'
+        // with key 'key' for next time.
+        console.log(errMsg);
+        return WebAssembly.instantiate(bytes, importObject).then(results => {
+          storeInDatabase(db, results.module);
+          return results;
+        });
+      })
+    },
+    errMsg => {
+      // If opening the database failed (due to permissions or quota), fall back
+      // to simply fetching and compiling the module and don't try to store the
+      // results.
+      console.log(errMsg);
+      return WebAssembly.instantiate(bytes, importObject);
+    });
+  }
+
   function doNativeWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
       Module['printErr']('no native wasm support detected');
@@ -1650,7 +1729,7 @@ function integrateWasmJS(Module) {
     }
     Module['printErr']('asynchronously preparing wasm');
     addRunDependency('wasm-instantiate'); // we can't run yet
-    WebAssembly.instantiate(getBinary(), info).then(function(output) {
+    doInstantiateWasm(getBinary(), info).then(function(output) {
       // receiveInstance() will swap in the exports (to Module.asm) so they can be called
       receiveInstance(output.instance);
       removeRunDependency('wasm-instantiate');
@@ -1760,6 +1839,7 @@ function integrateWasmJS(Module) {
         return null;
       }
     } else {
+      exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
       // in interpreter, we replace Module.buffer if we allocate
       return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
     }
@@ -2091,16 +2171,19 @@ function copyTempDouble(ptr) {
           // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
           // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
           var loc = GLctx.getUniformLocation(p, name);
-          var id = GL.getNewId(GL.uniforms);
-          utable[name] = [u.size, id];
-          GL.uniforms[id] = loc;
-  
-          for (var j = 1; j < u.size; ++j) {
-            var n = name + '['+j+']';
-            loc = GLctx.getUniformLocation(p, n);
-            id = GL.getNewId(GL.uniforms);
-  
+          if (loc != null)
+          {
+            var id = GL.getNewId(GL.uniforms);
+            utable[name] = [u.size, id];
             GL.uniforms[id] = loc;
+  
+            for (var j = 1; j < u.size; ++j) {
+              var n = name + '['+j+']';
+              loc = GLctx.getUniformLocation(p, n);
+              id = GL.getNewId(GL.uniforms);
+  
+              GL.uniforms[id] = loc;
+            }
           }
         }
       }};function _glPixelStorei(pname, param) {
@@ -9078,7 +9161,7 @@ function copyTempDouble(ptr) {
           ptable.maxUniformBlockNameLength = 0;
           for (var i = 0; i < numBlocks; ++i) {
             var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
-            ptable.maxUniformBlockNameLength = Math.max(ptable.maxAttributeLength, activeBlockName.length+1);
+            ptable.maxUniformBlockNameLength = Math.max(ptable.maxUniformBlockNameLength, activeBlockName.length+1);
           }
         }
         HEAP32[((p)>>2)]=ptable.maxUniformBlockNameLength;
