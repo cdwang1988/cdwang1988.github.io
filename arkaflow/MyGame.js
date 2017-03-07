@@ -258,6 +258,7 @@ moduleOverrides = undefined;
 var Runtime = {
   setTempRet0: function (value) {
     tempRet0 = value;
+    return value;
   },
   getTempRet0: function () {
     return tempRet0;
