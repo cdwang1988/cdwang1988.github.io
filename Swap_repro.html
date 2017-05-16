@@ -1,0 +1,4 @@
+<html><script>
+var blob = new Blob(["self.navigator.storage.persisted().then(function(e){ close();self.navigator.storage.persisted();}).catch(function(err){})"],{type: "text/javascript"});
+var worker1 = new Worker(window.URL.createObjectURL(blob));
+</script></html>
